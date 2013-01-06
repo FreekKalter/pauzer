@@ -93,6 +93,9 @@ body {
 .header-container {
     border-bottom: 20px solid #B8B8B8;
 }
+.footer-container a{
+    color: white;
+}
 
 .footer-container,
 .main aside {
