@@ -11,7 +11,7 @@
 		var defaults = {
 				date: (new Date()),
 				updateTime: 1000,
-				htmlTemplate: "%{d} <span class=\"cd-time\">days</span> %{h} <span class=\"cd-time\">hours</span> %{m} <span class=\"cd-time\">mins</span> %{s} <span class=\"cd-time\">sec</span>",
+				htmlTemplate: "%{d} <span class=\"cd-time days\">days</span> %{h} <span class=\"cd-time hours\">hours</span> %{m} <span class=\"cd-time minutes\">mins</span> %{s} <span class=\"cd-time seconds\">sec</span>",
 				minus: false,
 				onChange: null,
 				onComplete: null,
@@ -100,6 +100,18 @@
 					}
 				}
 
+                if (daysLeft==0){
+                    daysLeft = "";
+                    if( hrsLeft == 0){
+                        hrsLeft = "";
+                        if (minsLeft == 0){
+                            minsLeft = "";
+                        }
+                    }
+                }
+                
+
+
 				if ( settings.direction === 'down' && ( todaysDate <= countdownDate || settings.minus ) ) {
 					time = template.replace( rDays, daysLeft ).replace( rHours, hrsLeft ).replace( rMins, minsLeft ).replace( rSecs, secLeft );
 				} else if ( settings.direction === 'up' && ( countdownDate <= todaysDate || settings.minus ) ) {
@@ -108,8 +120,17 @@
 					time = template.replace( rDate, "00");
 					settings.hasCompleted = true;
 				}
+
+                el = $('<p />').html(time);
+                if( daysLeft == 0){
+                    el.find('.days').remove();
+                    if( hrsLeft == 0){
+                        el.find('.hours').remove();
+                    }
+                }
+                    
 								
-				$this.html( time );
+				$this.html( el );
 				
 				$this.trigger('change', [settings] );
 				
@@ -182,6 +203,15 @@
 			
 						settings.hasCompleted = false;
 						
+                        if (daysLeft==0){
+                            daysLeft = "";
+                            if( hrsLeft == 0){
+                                hrsLeft = "";
+                                if (minsLeft == 0){
+                                    minsLeft = "";
+                                }
+                            }
+                        }
 						//Set initial time
 						if ( opts.direction === 'down' && ( todaysDate <= countdownDate || opts.minus ) ) {
 							time = template.replace( rDays, daysLeft ).replace( rHours, hrsLeft ).replace( rMins, minsLeft ).replace( rSecs, secLeft );
@@ -192,6 +222,13 @@
 							settings.hasCompleted = true;
 						}
 
+                        el = $('<p />').html(time);
+                        if( daysLeft == 0){
+                            el.find('.days').remove();
+                            if( hrsLeft == 0){
+                                el.find('.hours').remove();
+                            }
+                        }
 						//Store settings so they can be accessed later
 						
 						settings.originalContent = $(this).html();
@@ -215,7 +252,7 @@
 						
 						$this.data( 'jcdSettings', settings );
 						
-						$this.html( time );
+						$this.html( el );
 						
 						if ( settings.hasCompleted ) {
 						
