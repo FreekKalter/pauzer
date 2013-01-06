@@ -126,6 +126,9 @@
                     el.find('.days').remove();
                     if( hrsLeft == 0){
                         el.find('.hours').remove();
+                        if( minsLeft == 0 ){
+                            el.find('.minutes').remove();
+                        }
                     }
                 }
                     
@@ -227,6 +230,9 @@
                             el.find('.days').remove();
                             if( hrsLeft == 0){
                                 el.find('.hours').remove();
+                                if( minsLeft == 0 ){
+                                    el.find('.minutes').remove();
+                                }
                             }
                         }
 						//Store settings so they can be accessed later

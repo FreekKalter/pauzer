@@ -40,10 +40,13 @@
                 <input class="submit-button" type="submit" value="pauze">
                 </form>
 
-                {{if .}}
+                {{if .Time}}
                     <p id="time" class="time"></p>
                     <a href="/resume">Klaar</a>
                 {{end}}
+                <div class="error">
+                    {{.Error}}
+                </div>
             </div> <!-- #main -->
         </div> <!-- #main-container -->
 
@@ -62,9 +65,9 @@
         <script type="text/javascript">
             $(document).ready(function() {
 
-                {{if .}}
+                {{if .Time}}
                 $("#time").countdown({
-                    date: "{{.}}",
+                    date: "{{.Time}}",
                     onComplete: function( event ){
                         window.location.replace("/");
                     }

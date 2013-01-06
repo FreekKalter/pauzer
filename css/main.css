@@ -270,6 +270,10 @@ nav a:hover {
    Helper classes
    ========================================================================== */
 
+.error{
+    color: red;
+}
+
 .ir {
     background-color: transparent;
     border: 0;
