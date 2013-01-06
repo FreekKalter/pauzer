@@ -24,8 +24,22 @@ body {
     background: #b3d4fc;
     text-shadow: none;
 }
+/*
 .submit-button{
     display: block;
+}
+*/
+p.time{
+    font-size: 2em;
+    font-weight: bold;
+}
+
+a, a:visited {
+    color: black;
+}
+
+a:hover{
+    text-decoration: none;
 }
 
 hr {
@@ -271,6 +285,7 @@ nav a:hover {
    ========================================================================== */
 
 .error{
+    font-weight: bold;
     color: red;
 }
 
