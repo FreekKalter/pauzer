@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -78,16 +77,26 @@ func PauseHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 303)
 }
 
+func NotFound(
+	w http.ResponseWriter,
+	r *http.Request) {
+
+	tmpl, err := template.New("main").ParseFiles("404.tmpl")
+	if err != nil {
+		panic(err)
+	}
+	err = tmpl.ExecuteTemplate(w, "main", r.URL)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func call_sabnzbd(url string) {
 	resp, err := client.Get(url)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	response, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
 }
 
 func main() {
@@ -98,6 +107,7 @@ func main() {
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
 	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
+	r.NotFoundHandler = http.HandlerFunc(NotFound)
 
 	http.Handle("/", r)
 	http.ListenAndServe(":4000", r)

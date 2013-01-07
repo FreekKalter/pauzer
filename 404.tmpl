@@ -1,3 +1,4 @@
+{{define "main"}}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -141,17 +142,15 @@
     </head>
     <body>
         <div class="container">
-            <h1>Not found <span>:(</span></h1>
-            <p>Sorry, but the page you were trying to view does not exist.</p>
-            <p>It looks like this was the result of either:</p>
+            <h1>Pagina niet gevonden<span>:(</span></h1>
+            <h2>{{.}}</h2>
+            <p>Sorry, de pagina die u probeert te bereiken kan niet worden gevonden.</p>
+            <p>Dit kan komen door:</p>
             <ul>
-                <li>a mistyped address</li>
-                <li>an out-of-date link</li>
+                <li>een veerkeerd getypt adres</li>
+                <li>de link bestaat niet meer</li>
             </ul>
-            <script>
-                var GOOG_FIXURL_LANG = (navigator.language || '').slice(0,2),GOOG_FIXURL_SITE = location.host;
-            </script>
-            <script src="http://linkhelp.clients.google.com/tbproxy/lh/wm/fixurl.js"></script>
         </div>
     </body>
 </html>
+{{end}}
