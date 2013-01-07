@@ -31,7 +31,7 @@ func HomeHandler(
 	w http.ResponseWriter,
 	r *http.Request) {
 
-	tmpl, err := template.New("root").ParseFiles("index.html")
+	tmpl, err := template.New("root").ParseFiles("index.tmpl")
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +57,7 @@ func ResumeHandler(w http.ResponseWriter, r *http.Request) {
 	resume_url := "https://localhost:9100/sabnzbd/api?mode=resume&apikey=d2ef95d20181d30d884321fb9cb68cbe"
 	timer_set_at = time.Now()
 	timer_duration = 0
-    call_sabnzbd(resume_url)
+	call_sabnzbd(resume_url)
 	http.Redirect(w, r, "/", 303)
 }
 
