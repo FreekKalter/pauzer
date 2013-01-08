@@ -67,6 +67,17 @@
                 {{if .Time}}
                 $("#time").countdown({
                     date: "{{.Time}}",
+                    onChange: function( event, timer ){
+                        d = new Date();
+                        if( d.getSeconds() % 5 == 0){
+                            $.ajax({
+                                url: "/time",
+                                success: function (data){
+                                    timer.date = new Date(data)
+                                }
+                            });
+                        }
+                    },
                     onComplete: function( event ){
                         window.location.replace("/");
                     }

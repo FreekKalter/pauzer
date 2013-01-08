@@ -10,7 +10,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+    "encoding/json"
+    "io/ioutil"
 )
+
+const api_key ="d2ef95d20181d30d884321fb9cb68cbe"
+const api_url ="https://localhost:9100/sabnzbd/"
 
 // ignore invalid certificates (todo: make it accecpt a valid cert)
 var tr = &http.Transport{
@@ -35,6 +40,10 @@ func HomeHandler(
 		panic(err)
 	}
 
+    _, err = client.Get("http://localhost:4000/time")
+    if err != nil{
+        panic(err)
+    }
 	timer_expire := timer_set_at.Add(timer_duration)
 	template_data := TemplateData{}
 	if timer_duration == -1 {
@@ -53,7 +62,7 @@ func HomeHandler(
 }
 
 func ResumeHandler(w http.ResponseWriter, r *http.Request) {
-	resume_url := "https://localhost:9100/sabnzbd/api?mode=resume&apikey=d2ef95d20181d30d884321fb9cb68cbe"
+	resume_url := fmt.Sprintf("%vapi?mode=resume&apikey=%v",api_url, api_key)
 	timer_set_at = time.Now()
 	timer_duration = 0
 	call_sabnzbd(resume_url)
@@ -67,14 +76,59 @@ func PauseHandler(w http.ResponseWriter, r *http.Request) {
 		timer_duration = -1
 		fmt.Println("invalid data")
 	} else {
-		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 0, 32)
+		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)
 		timer_duration = time.Minute * time.Duration(timer_value)
 		timer_set_at = time.Now()
 
-		pause_url := fmt.Sprintf("https://localhost:9100/sabnzbd/api?mode=config&name=set_pause&value=%v&apikey=d2ef95d20181d30d884321fb9cb68cbe", timer_value)
+		pause_url := fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%v&apikey=%v", api_url, timer_value, api_key)
 		go call_sabnzbd(pause_url)
 	}
 	http.Redirect(w, r, "/", 303)
+}
+
+func GetTimeHandler(
+	w http.ResponseWriter,
+	r *http.Request) {
+
+    time_url := fmt.Sprintf("%vapi?mode=qstatus&output=json&apikey=%v", api_url, api_key)
+    resp, err := client.Get(time_url)
+    if err != nil{
+        panic(err)
+    }
+    body, err := ioutil.ReadAll(resp.Body)
+    defer resp.Body.Close()
+
+    type DecodedContent struct{
+        Pause_int string
+    }
+    var m DecodedContent
+    err = json.Unmarshal( body, &m )
+    if err != nil{
+        panic(err)
+    }
+
+    time_regex := regexp.MustCompile("[0-9]{1,3}")
+    time_array := time_regex.FindAllStringSubmatch(m.Pause_int, 2)
+    if len(time_array) > 1{
+
+        minutes, err := strconv.ParseInt(time_array[0][0], 10,32)
+        if err != nil{
+            panic(err)
+        }
+        seconds, err := strconv.ParseInt(time_array[1][0], 10,32)
+        if err != nil{
+            panic(err)
+        }
+        timer_duration =  time.Duration(minutes) * time.Minute +  time.Duration(seconds) * time.Second
+        timer_set_at = time.Now()
+        timer_expire := timer_set_at.Add(timer_duration)
+
+        fmt.Fprint(w, timer_expire.Format(time.ANSIC) )
+    }else{
+        fmt.Println("no timer running")
+        fmt.Fprintln(w, time.Now().Format(time.ANSIC) )
+        timer_duration = 0
+    }
 }
 
 func NotFound(
@@ -104,6 +158,7 @@ func main() {
 	r.HandleFunc("/", HomeHandler).Name("home")
 	r.HandleFunc("/pause", PauseHandler).Name("pause")
 	r.HandleFunc("/resume", ResumeHandler).Name("resume")
+	r.HandleFunc("/time", GetTimeHandler).Name("time")
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
 	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
