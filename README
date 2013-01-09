@@ -1,0 +1,4 @@
+# Pauzer
+
+Website to pause a local sabnzb instance without exposing the whole interface.
+Writtin in [ go ]( golang.org ).
