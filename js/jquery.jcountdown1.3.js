@@ -82,35 +82,18 @@
 				secLeft = floor( (e_minsleft - minsLeft ) * 60 );
 				
 				if ( settings.leadingZero ) {
-				
-					if ( daysLeft < 10 ) {
-						daysLeft = "0" + daysLeft;
-					}
-					
-					if ( hrsLeft < 10 ) {
-						hrsLeft = "0" + hrsLeft;
-					}
-					
-					if ( minsLeft < 10 ) {
-						minsLeft = "0" + minsLeft;
-					}
-					
-					if ( secLeft < 10 ) {
-						secLeft = "0" + secLeft;
-					}
+					daysLeft = zeroPad(daysLeft,2)
+					hrsLeft = zeroPad(hrsLeft,2)
+                    minsLeft = zeroPad(minsLeft, 2)
+                    secLeft = zeroPad(secLeft,2)
 				}
 
                 if (daysLeft==0){
                     daysLeft = "";
-                    if( hrsLeft == 0){
-                        hrsLeft = "";
-                        if (minsLeft == 0){
-                            minsLeft = "";
-                        }
+                    if(hrsLeft==0){
+                        hrsLeft=""
                     }
                 }
-                
-
 
 				if ( settings.direction === 'down' && ( todaysDate <= countdownDate || settings.minus ) ) {
 					time = template.replace( rDays, daysLeft ).replace( rHours, hrsLeft ).replace( rMins, minsLeft ).replace( rSecs, secLeft );
@@ -126,13 +109,11 @@
                     el.find('.days').remove();
                     if( hrsLeft == 0){
                         el.find('.hours').remove();
-                        if( minsLeft == 0 ){
-                            el.find('.minutes').remove();
-                        }
                     }
                 }
                     
-								
+                settings.minsLeft = minsLeft
+                settings.secLeft = secLeft
 				$this.html( el );
 				
 				$this.trigger('change', [settings] );
@@ -158,7 +139,7 @@
 							todaysDate = ( opts.offset === null ) ? new Date() : getTimezoneDate( opts.offset ),
 							countdownDate = new Date( opts.date ),
 							timeLeft = ( opts.direction === 'down' ) ? countdownDate.getTime() - todaysDate.getTime() :
-								todaysDate.getTime() - countdownDate.getTime(),
+							todaysDate.getTime() - countdownDate.getTime(),
 							e_daysLeft = timeLeft / msPerDay,
 							daysLeft = floor(e_daysLeft),
 							e_hrsLeft = (e_daysLeft - daysLeft) * 24, //Gets remainder and * 24
@@ -185,34 +166,19 @@
 							$this.bind("resume.jcountdown", opts.onResume );
 						}
 						
-						if ( opts.leadingZero ) {
-						
-							if ( daysLeft < 10 ) {
-								daysLeft = "0" + daysLeft;
-							}
-							
-							if ( hrsLeft < 10 ) {
-								hrsLeft = "0" + hrsLeft;
-							}
-							
-							if ( minsLeft < 10 ) {
-								minsLeft = "0" + minsLeft;
-							}
-							
-							if ( secLeft < 10 ) {
-								secLeft = "0" + secLeft;
-							}
-						}
+                        if ( opts.leadingZero ) {
+                            daysLeft = zeroPad(daysLeft,2)
+                            hrsLeft = zeroPad(hrsLeft,2)
+                            minsLeft = zeroPad(minsLeft, 2)
+                            secLeft = zeroPad(secLeft,2)
+                        }
 			
 						settings.hasCompleted = false;
 						
                         if (daysLeft==0){
                             daysLeft = "";
-                            if( hrsLeft == 0){
-                                hrsLeft = "";
-                                if (minsLeft == 0){
-                                    minsLeft = "";
-                                }
+                            if(hrsLeft==0){
+                                hrsLeft=""
                             }
                         }
 						//Set initial time
@@ -230,9 +196,6 @@
                             el.find('.days').remove();
                             if( hrsLeft == 0){
                                 el.find('.hours').remove();
-                                if( minsLeft == 0 ){
-                                    el.find('.minutes').remove();
-                                }
                             }
                         }
 						//Store settings so they can be accessed later
@@ -258,6 +221,8 @@
 						
 						$this.data( 'jcdSettings', settings );
 						
+                        settings.minsLeft = minsLeft
+                        settings.secLeft = secLeft
 						$this.html( el );
 						
 						if ( settings.hasCompleted ) {
@@ -301,7 +266,7 @@
 						todaysDate = ( settings.offset === null ) ? new Date() : getTimezoneDate( settings.offset );
 						countdownDate = new Date( settings.date );						
 						timeLeft = ( settings.direction === 'down' ) ? countdownDate.getTime() - todaysDate.getTime() :
-							todaysDate.getTime() - countdownDate.getTime();
+						todaysDate.getTime() - countdownDate.getTime();
 						e_daysLeft = timeLeft / msPerDay;
 						daysLeft = floor( e_daysLeft );
 						e_hrsLeft = ( e_daysLeft - daysLeft ) * 24; //Gets remainder and * 24
@@ -503,3 +468,8 @@
 	};
        
 })(jQuery);
+
+function zeroPad(num, places) {
+  var zero = places - num.toString().length + 1;
+  return Array(+(zero > 0 && zero)).join("0") + num;
+}

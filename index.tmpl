@@ -68,6 +68,7 @@
                 {{if .Time}}
                 $("#time").countdown({
                     date: "{{.Time}}",
+                    leadingZero: true,
                     onChange: function( event, timer ){
                         d = new Date();
                         if( d.getSeconds() % 5 == 0){
@@ -78,6 +79,7 @@
                                 }
                             });
                         }
+                        window.document.title = "Pauzer " + timer.minsLeft + ":" + timer.secLeft
                     },
                     onComplete: function( event ){
                         window.location.replace("/");
