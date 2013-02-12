@@ -14,8 +14,10 @@ import (
 	"time"
 )
 
-const api_key = "d2ef95d20181d30d884321fb9cb68cbe"
-const api_url = "https://localhost:9100/sabnzbd/"
+//const api_key = "d2ef95d20181d30d884321fb9cb68cbe"
+//const api_url = "https://localhost:9100/sabnzbd/"
+const api_key = "a9311c05dbb6ab38598de47323386e86"
+const api_url = "https://localhost:9090/sabnzbd/"
 
 // ignore invalid certificates (todo: make it accecpt a valid cert)
 var tr = &http.Transport{
@@ -40,10 +42,6 @@ func HomeHandler(
 		panic(err)
 	}
 
-	_, err = client.Get("http://localhost:4000/time")
-	if err != nil {
-		panic(err)
-	}
 	timer_expire := timer_set_at.Add(timer_duration)
 	template_data := TemplateData{}
 	if timer_duration == -1 {
@@ -63,25 +61,34 @@ func HomeHandler(
 
 func ResumeHandler(w http.ResponseWriter, r *http.Request) {
 	resume_url := fmt.Sprintf("%vapi?mode=resume&apikey=%v", api_url, api_key)
+    reset_limit := fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", api_url, api_key)
 	timer_set_at = time.Now()
 	timer_duration = 0
 	call_sabnzbd(resume_url)
+	call_sabnzbd(reset_limit)
 	http.Redirect(w, r, "/", 303)
 }
 
 func PauseHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm() // get post data for extraction in r.FormValue
-	time_regex := regexp.MustCompile("^[0-9]{1,2}$")
-	if !time_regex.MatchString(strings.TrimSpace(r.FormValue("time"))) {
+	valid_integer_regex := regexp.MustCompile("^[0-9]{1,2}$")
+	if !valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("time"))) ||
+       !valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("limit"))){
 		timer_duration = -1
 		fmt.Println("invalid data")
 	} else {
-		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)
+		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32) //base 10, 32bit integer
+		limit_value, _ := strconv.ParseInt(r.FormValue("limit"), 10, 32) //base 10, 32bit integer
 		timer_duration = time.Minute * time.Duration(timer_value)
 		timer_set_at = time.Now()
 
-		pause_url := fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%v&apikey=%v", api_url, timer_value, api_key)
-		go call_sabnzbd(pause_url)
+        if limit_value == 0 {
+            pause_url := fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%v&apikey=%v", api_url, timer_value, api_key)
+            go call_sabnzbd(pause_url)
+        }else{
+            pause_url := fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%v&apikey=%v", api_url, limit_value, api_key)
+            go call_sabnzbd(pause_url)
+        }
 	}
 	http.Redirect(w, r, "/", 303)
 }
