@@ -85,13 +85,13 @@ func ResumeHandler(w http.ResponseWriter, r *http.Request) {
 
 func FormHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm() // get post data for extraction in r.FormValue
-	valid_integer_regex := regexp.MustCompile("^[0-9]{1,2}$")
+	valid_integer_regex := regexp.MustCompile("^[0-9]{1,3}$")
 	if !valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("time"))) ||
 		!valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("limit"))) {
 		countDown.Duration = -1
 		fmt.Println("invalid data")
 	} else {
-		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)  //base 10, 32bit integer
+		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)       //base 10, 32bit integer
 		limit_percentage, _ := strconv.ParseInt(r.FormValue("limit"), 10, 32) //base 10, 32bit integer
 		countDown.Duration = time.Minute * time.Duration(timer_value)
 		countDown.Limit = max_speed / 100 * limit_percentage
