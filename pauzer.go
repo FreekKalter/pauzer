@@ -49,6 +49,8 @@ type TemplateData struct {
 	Error string
 }
 
+var compiledTemplates = template.Must(template.ParseFiles("index.tmpl", "404.tmpl"))
+
 var sabNzbFunctions map[string]string = map[string]string{
 	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", api_url, api_key),
 	"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", api_url, api_key),
@@ -60,17 +62,12 @@ func HomeHandler(
 	w http.ResponseWriter,
 	r *http.Request) {
 
-	tmpl, err := template.New("root").ParseFiles("index.tmpl")
-	if err != nil {
-		panic(err)
-	}
-
 	tmplData := TemplateData{}
 	if (countDown.ExpiresAt()).After(time.Now()) {
 		tmplData.Time = countDown.ExpiresAtJs()
 	}
 
-	err = tmpl.ExecuteTemplate(w, "root", tmplData)
+	err := compiledTemplates.ExecuteTemplate(w, "index.tmpl", tmplData)
 	if err != nil {
 		panic(err)
 	}
@@ -89,12 +86,18 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 	if !valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("time"))) ||
 		!valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("limit"))) {
 		countDown.Duration = -1
-		fmt.Println("invalid data")
+
+		tmplData := TemplateData{Error: "invalid data"}
+		err := compiledTemplates.ExecuteTemplate(w, "index.tmpl", tmplData)
+		if err != nil {
+			panic(err)
+		}
+		return
 	} else {
 		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)       //base 10, 32bit integer
 		limit_percentage, _ := strconv.ParseInt(r.FormValue("limit"), 10, 32) //base 10, 32bit integer
 		countDown.Duration = time.Minute * time.Duration(timer_value)
-		countDown.Limit = max_speed / 100 * limit_percentage
+		countDown.Limit = 100 - (max_speed / 100 * limit_percentage) // percentage give is how much to block, so inverse that to get how much to let through
 		time.AfterFunc(countDown.Duration, func() {
 			countDown.Duration = -1
 			call_sabnzbd(sabNzbFunctions["resume_download"])
@@ -115,11 +118,7 @@ func NotFound(
 	w http.ResponseWriter,
 	r *http.Request) {
 
-	tmpl, err := template.New("main").ParseFiles("404.tmpl")
-	if err != nil {
-		panic(err)
-	}
-	err = tmpl.ExecuteTemplate(w, "main", r.URL)
+	err := compiledTemplates.ExecuteTemplate(w, "404.tmpl", r.URL)
 	if err != nil {
 		panic(err)
 	}
