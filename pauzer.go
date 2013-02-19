@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -44,12 +45,7 @@ var countDown CountDown = CountDown{
 	Limit:    0,
 }
 
-type TemplateData struct {
-	Time  string
-	Error string
-}
-
-var compiledTemplates = template.Must(template.ParseFiles("index.tmpl", "404.tmpl"))
+var compiledTemplates = template.Must(template.ParseFiles("404.tmpl"))
 
 var sabNzbFunctions map[string]string = map[string]string{
 	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", api_url, api_key),
@@ -62,15 +58,11 @@ func HomeHandler(
 	w http.ResponseWriter,
 	r *http.Request) {
 
-	tmplData := TemplateData{}
-	if (countDown.ExpiresAt()).After(time.Now()) {
-		tmplData.Time = countDown.ExpiresAtJs()
-	}
-
-	err := compiledTemplates.ExecuteTemplate(w, "index.tmpl", tmplData)
+	indexContent, err := ioutil.ReadFile("index.html")
 	if err != nil {
 		panic(err)
 	}
+	fmt.Fprintf(w, string(indexContent))
 }
 
 func ResumeHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,21 +73,15 @@ func ResumeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FormHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm() // get post data for extraction in r.FormValue
+	formVars := mux.Vars(r)
 	valid_integer_regex := regexp.MustCompile("^[0-9]{1,3}$")
-	if !valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("time"))) ||
-		!valid_integer_regex.MatchString(strings.TrimSpace(r.FormValue("limit"))) {
+	if !valid_integer_regex.MatchString(strings.TrimSpace(formVars["time"])) ||
+		!valid_integer_regex.MatchString(strings.TrimSpace(formVars["limit"])) {
 		countDown.Duration = -1
-
-		tmplData := TemplateData{Error: "invalid data"}
-		err := compiledTemplates.ExecuteTemplate(w, "index.tmpl", tmplData)
-		if err != nil {
-			panic(err)
-		}
 		return
 	} else {
-		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)       //base 10, 32bit integer
-		limit_percentage, _ := strconv.ParseInt(r.FormValue("limit"), 10, 32) //base 10, 32bit integer
+		timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)       //base 10, 32bit integer
+		limit_percentage, _ := strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
 		countDown.Duration = time.Minute * time.Duration(timer_value)
 		countDown.Limit = max_speed - ((max_speed / 100) * limit_percentage) // percentage give is how much to block, so inverse that to get how much to let through
 		time.AfterFunc(countDown.Duration, func() {
@@ -111,7 +97,13 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		countDown.SetAt = time.Now()
 	}
-	http.Redirect(w, r, "/", 303)
+}
+
+func TimeHandler(
+	w http.ResponseWriter,
+	r *http.Request) {
+
+	// TODO: write json ( for all others to )
 }
 
 func NotFound(
@@ -134,9 +126,10 @@ func call_sabnzbd(url string) {
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/", HomeHandler).Name("home")
-	r.HandleFunc("/action", FormHandler).Name("pause")
+	r.HandleFunc("/", HomeHandler)
+	r.HandleFunc("/action/{time:[0-9]+}/{limit:[0-9]+}", FormHandler).Name("pause")
 	r.HandleFunc("/resume", ResumeHandler).Name("resume")
+	r.HandleFunc("/time", TimeHandler)
 	//r.HandleFunc("/time", GetTimeHandler).Name("time")
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
