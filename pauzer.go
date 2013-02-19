@@ -97,7 +97,7 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 		timer_value, _ := strconv.ParseInt(r.FormValue("time"), 10, 32)       //base 10, 32bit integer
 		limit_percentage, _ := strconv.ParseInt(r.FormValue("limit"), 10, 32) //base 10, 32bit integer
 		countDown.Duration = time.Minute * time.Duration(timer_value)
-		countDown.Limit = 100 - (max_speed / 100 * limit_percentage) // percentage give is how much to block, so inverse that to get how much to let through
+		countDown.Limit = max_speed - ((max_speed / 100) * limit_percentage) // percentage give is how much to block, so inverse that to get how much to let through
 		time.AfterFunc(countDown.Duration, func() {
 			countDown.Duration = -1
 			call_sabnzbd(sabNzbFunctions["resume_download"])
