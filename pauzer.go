@@ -56,7 +56,7 @@ var countDown CountDown = CountDown{
 	Limit:    0,
 }
 
-var compiledTemplates = template.Must(template.ParseFiles("404.tmpl"))
+var compiledTemplates = template.Must(template.ParseFiles("404.html"))
 
 var sabNzbFunctions map[string]string = map[string]string{
 	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", api_url, api_key),
@@ -133,7 +133,7 @@ func NotFound(
 	w http.ResponseWriter,
 	r *http.Request) {
 
-	err := compiledTemplates.ExecuteTemplate(w, "404.tmpl", r.URL)
+	err := compiledTemplates.ExecuteTemplate(w, "404.html", r.URL)
 	if err != nil {
 		panic(err)
 	}
