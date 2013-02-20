@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"html/template"
@@ -26,22 +28,31 @@ var tr = &http.Transport{
 var client = &http.Client{Transport: tr}
 
 type CountDown struct {
-	SetAt    time.Time
-	Duration time.Duration
-	Limit    int64
+	SetAt                  time.Time
+	Duration               time.Duration
+	Limit, LimitPercentage int64
 }
 
-func (c CountDown) ExpiresAt() time.Time {
-	return c.SetAt.Add(c.Duration)
+func (c CountDown) ExpiresAt() (expire time.Time, err error) {
+	if c.SetAt.Equal(time.Unix(0, 0)) {
+		err = errors.New("timer not running")
+	}
+	expire = c.SetAt.Add(c.Duration)
+	return
 }
 
-func (c CountDown) ExpiresAtJs() string {
-	return (c.ExpiresAt()).Format(time.ANSIC)
+func (c CountDown) SecondsLeft() (secs int64, err error) {
+	expires, err := c.ExpiresAt()
+	if err != nil {
+		err = errors.New("timer not running")
+	}
+	secs = int64(expires.Sub(time.Now()).Seconds())
+	return
 }
 
 var countDown CountDown = CountDown{
-	SetAt:    time.Now(),
-	Duration: -1,
+	SetAt:    time.Unix(0, 0),
+	Duration: 0,
 	Limit:    0,
 }
 
@@ -66,10 +77,10 @@ func HomeHandler(
 }
 
 func ResumeHandler(w http.ResponseWriter, r *http.Request) {
-	countDown.Duration = -1
+	countDown.Duration = 0
 	call_sabnzbd(sabNzbFunctions["resume_download"])
 	call_sabnzbd(sabNzbFunctions["reset_limit"])
-	http.Redirect(w, r, "/", 303)
+	//TODO: return json success
 }
 
 func FormHandler(w http.ResponseWriter, r *http.Request) {
@@ -77,20 +88,21 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 	valid_integer_regex := regexp.MustCompile("^[0-9]{1,3}$")
 	if !valid_integer_regex.MatchString(strings.TrimSpace(formVars["time"])) ||
 		!valid_integer_regex.MatchString(strings.TrimSpace(formVars["limit"])) {
-		countDown.Duration = -1
+		countDown.Duration = 0
 		return
 	} else {
-		timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)       //base 10, 32bit integer
-		limit_percentage, _ := strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
+		timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)               //base 10, 32bit integer
+		countDown.LimitPercentage, _ = strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
 		countDown.Duration = time.Minute * time.Duration(timer_value)
-		countDown.Limit = max_speed - ((max_speed / 100) * limit_percentage) // percentage give is how much to block, so inverse that to get how much to let through
+		countDown.Limit = max_speed - ((max_speed / 100) * countDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
 		time.AfterFunc(countDown.Duration, func() {
-			countDown.Duration = -1
+			countDown.Duration = 0
+			countDown.SetAt = time.Unix(0, 0)
 			call_sabnzbd(sabNzbFunctions["resume_download"])
 			call_sabnzbd(sabNzbFunctions["reset_limit"])
 		})
 
-		if limit_percentage == 100 {
+		if countDown.LimitPercentage == 100 {
 			go call_sabnzbd(fmt.Sprintf(sabNzbFunctions["pause"], timer_value))
 		} else {
 			go call_sabnzbd(fmt.Sprintf(sabNzbFunctions["limit"], countDown.Limit))
@@ -99,11 +111,22 @@ func FormHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func TimeHandler(
+func CurrentStateHandler(
 	w http.ResponseWriter,
 	r *http.Request) {
+	var limit, dur int64
+	secs, err := countDown.SecondsLeft()
+	if err != nil {
+		limit = 0
+		dur = 0
+	} else {
+		dur = int64(countDown.Duration.Minutes())
+		limit = countDown.LimitPercentage
+	}
+	state := map[string]int64{"secondsLeft": secs, "limit": limit, "time": dur}
 
-	// TODO: write json ( for all others to )
+	jsonEncoder := json.NewEncoder(w)
+	jsonEncoder.Encode(state)
 }
 
 func NotFound(
@@ -129,7 +152,7 @@ func main() {
 	r.HandleFunc("/", HomeHandler)
 	r.HandleFunc("/action/{time:[0-9]+}/{limit:[0-9]+}", FormHandler).Name("pause")
 	r.HandleFunc("/resume", ResumeHandler).Name("resume")
-	r.HandleFunc("/time", TimeHandler)
+	r.HandleFunc("/state", CurrentStateHandler)
 	//r.HandleFunc("/time", GetTimeHandler).Name("time")
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
