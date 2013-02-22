@@ -1,6 +1,6 @@
 angular.module('pauzerFilters', []).filter('timeFormat', function() {
     return function( input ){
-        if (!input)
+        if (!input || input <= 0)
             return
         function zeroPad(num, places) {
           var zero = places - num.toString().length + 1;

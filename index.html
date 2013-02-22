@@ -51,9 +51,12 @@
                             <option value="30">30</option>
                             <option value="60">60</option>
                             <option value="90">90</option>
-                        </select>
-                        minuten.<br>
-                        <button ng-click="setTime()"> Start timer</button>
+                        </select> minuten.</br>
+
+                        <ng-switch on="form.counterRunning">
+                            <button ng-click="toggleTimer()" ng-switch-when="false">Start timer</button>
+                            <button ng-click="toggleTimer()" ng-switch-when="true">Stop timer</button>
+                        </ng-switch>
                     </form>
                     <p id="time" class="time">
                        {{ counter | timeFormat }}

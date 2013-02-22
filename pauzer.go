@@ -78,9 +78,9 @@ func HomeHandler(
 
 func ResumeHandler(w http.ResponseWriter, r *http.Request) {
 	countDown.Duration = 0
+	countDown.Limit = 0
 	call_sabnzbd(sabNzbFunctions["resume_download"])
 	call_sabnzbd(sabNzbFunctions["reset_limit"])
-	//TODO: return json success
 }
 
 func FormHandler(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func CurrentStateHandler(
 	r *http.Request) {
 	var limit, dur int64
 	secs, err := countDown.SecondsLeft()
-	if err != nil {
+	if err != nil || secs <= 0 {
 		limit = 0
 		dur = 0
 	} else {
