@@ -9,6 +9,8 @@
         <meta name="viewport" content="width=device-width">
 
         <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="css/main-min.css" rel="stylesheet" media="screen">
+
 
         <script src="js/angular/angular.min.js"></script>
         <script src="js/app-min.js"></script>
@@ -27,7 +29,7 @@
                 </div>
 
                 <div class="row" ng-controller="PauzerCtrl">
-                    <div class="span8">
+                    <div class="span6">
                         <form class="form-horizontal">
                             <div class="control-group">
                                 <label class="control-label" for="limit">Beperk snelheid met: </label>
@@ -57,15 +59,15 @@
                                 </ng-switch>
                             </div>
                         </form>
-                    </div> <!-- span8-->
-                    <div class="span4">
-                        <h2 class="center" id="time" class="time">
+                    </div> <!-- span6/ column1-->
+                    <div class="span6">
+                        <h2 class="text-center" id="time" class="time">
                             <strong>{{ counter | timeFormat }}</strong>
                         </h2>
                         <div ng-show="form.counterRunning" class="progress">
                             <div class="bar" ng-style="progressBar" ></div>
                         </div>
-                    </div><!--span4-->
+                    </div><!--span6/ column2 -->
                 </div> <!-- row -->
             </div><!-- (main) .container -->
         </div> <!-- wrap -->
