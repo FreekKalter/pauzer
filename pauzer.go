@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
+	"launchpad.net/goyaml"
 	"log"
 	"log/syslog"
 	"net/http"
@@ -24,13 +25,15 @@ import (
 	"time"
 )
 
-const (
-	api_key   = "d2ef95d20181d30d884321fb9cb68cbe"
-	api_url   = "https://localhost:9100/sabnzbd/"
-	max_speed = 1000
-)
+type Config struct {
+	Api_key   string
+	Api_url   string
+	Max_speed int
+	Port      int
+}
 
 var slog log.Logger
+var config Config
 
 // ignore invalid certificates (todo: make it accecpt a valid cert)
 var tr = &http.Transport{
@@ -70,10 +73,10 @@ var cDown countDown = countDown{
 var compiledTemplates = template.Must(template.ParseFiles("404.html"))
 
 var sabNzbFunctions map[string]string = map[string]string{
-	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", api_url, api_key),
-	"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", api_url, api_key),
-	"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", api_url, api_key),
-	"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", api_url, api_key),
+	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", config.Api_url, config.Api_key),
+	"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", config.Api_url, config.Api_key),
+	"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v",config.Api_url, config.Api_key),
+	"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 }
 
 func homeHandler(
@@ -105,7 +108,7 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 		timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)           //base 10, 32bit integer
 		cDown.LimitPercentage, _ = strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
 		cDown.Duration = time.Minute * time.Duration(timer_value)
-		cDown.Limit = max_speed - ((max_speed / 100) * cDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
+		cDown.Limit = int64(config.Max_speed) - ((int64(config.Max_speed) / 100) * cDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
 		time.AfterFunc(cDown.Duration, func() {
 			cDown.Duration = 0
 			cDown.SetAt = time.Unix(0, 0)
@@ -169,6 +172,17 @@ func main() {
 		os.Exit(0)
 	}(killChannel, slog)
 
+	// Load config
+	configFile, err := ioutil.ReadFile("config.yml")
+	if err != nil {
+		slog.Panic(err)
+	}
+	config := Config{}
+	err = goyaml.Unmarshal(configFile, &config)
+    if err != nil {
+        slog.Panic(err)
+    }
+
 	// set up gorilla/mux handlers
 	r := mux.NewRouter()
 	r.HandleFunc("/", homeHandler)
@@ -176,7 +190,7 @@ func main() {
 	r.HandleFunc("/resume", resumeHandler)
 	r.HandleFunc("/state", currentStateHandler)
 
-    // static files get served directly
+	// static files get served directly
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
 	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
@@ -184,6 +198,6 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 
 	http.Handle("/", r)
-	slog.Println("pauzer started on port 4000")
+    slog.Println("pauzer started on port", config.Port)
 	http.ListenAndServe(":4000", r)
 }
