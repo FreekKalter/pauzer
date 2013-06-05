@@ -12,10 +12,15 @@ import (
 	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
+	"log"
+	"log/syslog"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -24,6 +29,8 @@ const (
 	api_url   = "https://localhost:9100/sabnzbd/"
 	max_speed = 1000
 )
+
+var slog log.Logger
 
 // ignore invalid certificates (todo: make it accecpt a valid cert)
 var tr = &http.Transport{
@@ -75,7 +82,7 @@ func homeHandler(
 
 	indexContent, err := ioutil.ReadFile("index.html")
 	if err != nil {
-		panic(err)
+		slog.Panic(err)
 	}
 	fmt.Fprintf(w, string(indexContent))
 }
@@ -135,25 +142,41 @@ func currentStateHandler(
 func notFound(w http.ResponseWriter, r *http.Request) {
 	err := compiledTemplates.ExecuteTemplate(w, "404.html", r.URL)
 	if err != nil {
-		panic(err)
+		slog.Panic(err)
 	}
 }
 
 func callSabnzbd(url string) {
 	resp, err := client.Get(url)
 	if err != nil {
-		panic(err)
+		slog.Panic(err)
 	}
 	defer resp.Body.Close()
 }
 
 func main() {
+	// Set up logging
+	slog, err := syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_USER, log.LstdFlags)
+	if err != nil {
+		slog.Panic(err)
+	}
+	// Set up gracefull termination
+	killChannel := make(chan os.Signal, 1)
+	signal.Notify(killChannel, os.Interrupt, os.Kill, syscall.SIGTERM)
+	go func(c chan os.Signal, l *log.Logger) {
+		<-c
+		l.Println("shutting down pauzer")
+		os.Exit(0)
+	}(killChannel, slog)
+
+	// set up gorilla/mux handlers
 	r := mux.NewRouter()
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/action/{time:[0-9]+}/{limit:[0-9]+}", formHandler)
 	r.HandleFunc("/resume", resumeHandler)
 	r.HandleFunc("/state", currentStateHandler)
 
+    // static files get served directly
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
 	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
@@ -161,5 +184,6 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 
 	http.Handle("/", r)
+	slog.Println("pauzer started on port 4000")
 	http.ListenAndServe(":4000", r)
 }
