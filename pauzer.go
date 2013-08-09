@@ -9,10 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
-	"launchpad.net/goyaml"
 	"log"
 	"log/syslog"
 	"net/http"
@@ -23,6 +21,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/mux"
+	"launchpad.net/goyaml"
 )
 
 type Config struct {
@@ -32,20 +33,27 @@ type Config struct {
 	Port      int
 }
 
-var slog log.Logger
+var slog *log.Logger
 var config Config
-
-// ignore invalid certificates (todo: make it accecpt a valid cert)
-var tr = &http.Transport{
-	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-}
-var client = &http.Client{Transport: tr}
 
 type countDown struct {
 	SetAt                  time.Time
 	Duration               time.Duration
 	Limit, LimitPercentage int64
 }
+
+var cDown countDown = countDown{
+	SetAt:    time.Unix(0, 0),
+	Duration: 0,
+	Limit:    0,
+}
+
+var compiledTemplates = template.Must(template.ParseFiles("404.html"))
+
+var sabNzbFunctions map[string]string
+
+// ignore invalid certificates (todo: make it accecpt a valid cert)
+var client = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 
 func (c countDown) ExpiresAt() (expire time.Time, err error) {
 	if c.SetAt.Equal(time.Unix(0, 0)) {
@@ -64,25 +72,7 @@ func (c countDown) SecondsLeft() (secs int64, err error) {
 	return
 }
 
-var cDown countDown = countDown{
-	SetAt:    time.Unix(0, 0),
-	Duration: 0,
-	Limit:    0,
-}
-
-var compiledTemplates = template.Must(template.ParseFiles("404.html"))
-
-var sabNzbFunctions map[string]string = map[string]string{
-	"reset_limit":     fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=0&apikey=%v", config.Api_url, config.Api_key),
-	"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", config.Api_url, config.Api_key),
-	"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v",config.Api_url, config.Api_key),
-	"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
-}
-
-func homeHandler(
-	w http.ResponseWriter,
-	r *http.Request) {
-
+func homeHandler(w http.ResponseWriter, r *http.Request) {
 	indexContent, err := ioutil.ReadFile("index.html")
 	if err != nil {
 		slog.Panic(err)
@@ -103,31 +93,31 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 	if !valid_integer_regex.MatchString(strings.TrimSpace(formVars["time"])) ||
 		!valid_integer_regex.MatchString(strings.TrimSpace(formVars["limit"])) {
 		cDown.Duration = 0
-		return
-	} else {
-		timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)           //base 10, 32bit integer
-		cDown.LimitPercentage, _ = strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
-		cDown.Duration = time.Minute * time.Duration(timer_value)
-		cDown.Limit = int64(config.Max_speed) - ((int64(config.Max_speed) / 100) * cDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
-		time.AfterFunc(cDown.Duration, func() {
-			cDown.Duration = 0
-			cDown.SetAt = time.Unix(0, 0)
-			callSabnzbd(sabNzbFunctions["resume_download"])
-			callSabnzbd(sabNzbFunctions["reset_limit"])
-		})
+		return // TODO: proper error message maybe
+	}
 
-		if cDown.LimitPercentage == 100 {
-			go callSabnzbd(fmt.Sprintf(sabNzbFunctions["pause"], timer_value))
-		} else {
-			go callSabnzbd(fmt.Sprintf(sabNzbFunctions["limit"], cDown.Limit))
-		}
-		cDown.SetAt = time.Now()
+	timer_value, _ := strconv.ParseInt(formVars["time"], 10, 32)           //base 10, 32bit integer
+	cDown.LimitPercentage, _ = strconv.ParseInt(formVars["limit"], 10, 32) //base 10, 32bit integer
+	cDown.Duration = time.Minute * time.Duration(timer_value)
+	cDown.Limit = int64(config.Max_speed) - ((int64(config.Max_speed) / 100) * cDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
+	cDown.SetAt = time.Now()
+	slog.Printf("timer started: %+v\n", cDown)
+	time.AfterFunc(cDown.Duration, func() {
+		slog.Printf("timer done: %+v\n", cDown)
+		cDown.Duration = 0
+		cDown.SetAt = time.Unix(0, 0)
+		callSabnzbd(sabNzbFunctions["resume_download"])
+		callSabnzbd(sabNzbFunctions["reset_limit"])
+	})
+
+	if cDown.LimitPercentage == 100 {
+		go callSabnzbd(fmt.Sprintf(sabNzbFunctions["pause"], timer_value))
+	} else {
+		go callSabnzbd(fmt.Sprintf(sabNzbFunctions["limit"], cDown.Limit))
 	}
 }
 
-func currentStateHandler(
-	w http.ResponseWriter,
-	r *http.Request) {
+func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 	var limit, dur int64
 	secs, err := cDown.SecondsLeft()
 	if err != nil || secs <= 0 {
@@ -157,18 +147,30 @@ func callSabnzbd(url string) {
 	defer resp.Body.Close()
 }
 
+func initSabnzbFunctions() {
+	sabNzbFunctions = map[string]string{
+		"reset_limit":     fmt.Sprintf("%sapi?mode=config&name=speedlimit&value=0&apikey=%v", config.Api_url, config.Api_key),
+		"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", config.Api_url, config.Api_key),
+		"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+		"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+	}
+}
+
 func main() {
 	// Set up logging
-	slog, err := syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_USER, log.LstdFlags)
+	var err error
+	slog, err = syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_USER, 0)
 	if err != nil {
 		slog.Panic(err)
 	}
+	slog.SetPrefix("pauzer: ")
+
 	// Set up gracefull termination
 	killChannel := make(chan os.Signal, 1)
 	signal.Notify(killChannel, os.Interrupt, os.Kill, syscall.SIGTERM)
 	go func(c chan os.Signal, l *log.Logger) {
 		<-c
-		l.Println("shutting down pauzer")
+		l.Println("shutting down")
 		os.Exit(0)
 	}(killChannel, slog)
 
@@ -177,11 +179,11 @@ func main() {
 	if err != nil {
 		slog.Panic(err)
 	}
-	config := Config{}
 	err = goyaml.Unmarshal(configFile, &config)
-    if err != nil {
-        slog.Panic(err)
-    }
+	if err != nil {
+		slog.Panic(err)
+	}
+	initSabnzbFunctions()
 
 	// set up gorilla/mux handlers
 	r := mux.NewRouter()
@@ -198,6 +200,6 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 
 	http.Handle("/", r)
-    slog.Println("pauzer started on port", config.Port)
+	slog.Println("started on port", config.Port)
 	http.ListenAndServe(":4000", r)
 }
