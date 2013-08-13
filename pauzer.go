@@ -31,6 +31,7 @@ type Config struct {
 	Api_url   string
 	Max_speed int
 	Port      int
+	Times     []int
 }
 
 var slog *log.Logger
@@ -132,6 +133,12 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 	jsonEncoder.Encode(state)
 }
 
+func timesHandler(w http.ResponseWriter, r *http.Request) {
+	jsonEncoder := json.NewEncoder(w)
+    fmt.Println(config.Times)
+	jsonEncoder.Encode(config.Times)
+}
+
 func notFound(w http.ResponseWriter, r *http.Request) {
 	err := compiledTemplates.ExecuteTemplate(w, "404.html", r.URL)
 	if err != nil {
@@ -191,6 +198,7 @@ func main() {
 	r.HandleFunc("/action/{time:[0-9]+}/{limit:[0-9]+}", formHandler)
 	r.HandleFunc("/resume", resumeHandler)
 	r.HandleFunc("/state", currentStateHandler)
+	r.HandleFunc("/times", timesHandler)
 
 	// static files get served directly
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))

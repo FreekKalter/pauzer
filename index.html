@@ -14,7 +14,7 @@
 
         <script src="js/angular/angular.min.js"></script>
         <script src="js/app-min.js"></script>
-        <script src="js/controller-min.js"></script>
+        <script src="js/controller.js"></script>
         <script src="js/filters-min.js"></script>
 
     </head>
@@ -40,16 +40,16 @@
                                     <option value="20">20&#37;</option>
                                 </select>
                             </div> <!--.control-group-->
-                                
+
                             <div class="control-group">
                                 <label class="control-label" for="time"> Tijd (in minuten): </label>
-                                <select name="time" ng-model="form.time">
-                                    <option value="1">1</option>
-                                    <option value="15" selected>15</option>
-                                    <option value="30">30</option>
-                                    <option value="60">60</option>
-                                    <option value="90">90</option>
-                                </select> 
+                                <select name="time" ng-model="selectedTime" ng-options="t for t in availableTimes">
+                                    <!--<option value="1">1</option>-->
+                                    <!--<option value="15" selected>15</option>-->
+                                    <!--<option value="30">30</option>-->
+                                    <!--<option value="60">60</option>-->
+                                    <!--<option value="90">90</option>-->
+                                </select>
                             </div><!--control-group-->
 
                             <div class="controls">
