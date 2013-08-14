@@ -11,19 +11,11 @@
         <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.no-icons.min.css" rel=stylesheet>
         <link href="css/main.css" rel="stylesheet" media="screen">
 
-        <!-- Load CDN resoursces -->
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
-        <!-- Load local copys if loading from cdn fails -->
-        <script type="text/javascript">window.angular || document.write('<script type="text/javascript" src="js/angular.min.js"><\/script>');</script>
-
-        <script src="js/app.js"></script>
-        <script src="js/controller.js"></script>
-        <script src="js/filters.js"></script>
 
     </head>
     <body>
         <!--[if lt IE 7]>
-            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
         <div id="wrap">
             <div class="container">
@@ -57,8 +49,8 @@
 
                             <div class="controls">
                                 <ng-switch on="form.counterRunning">
-                                    <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="false">Start timer</button>
-                                    <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="true">Stop timer</button>
+                                <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="false">Start timer</button>
+                                <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="true">Stop timer</button>
                                 </ng-switch>
                             </div>
                         </form>
@@ -81,5 +73,13 @@
                 <p class="text-center muted credit"><a href="http://kalteronline.org">Kalter&Co</a></p>
             </div>
         </div> <!--footer-->
-    </body>
-</html>
+        <!-- Load CDN resoursces -->
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+        <!-- Load local copys if loading from cdn fails -->
+        <script type="text/javascript">window.angular || document.write('<script type="text/javascript" src="js/angular.min.js"><\/script>');</script>
+
+            <script src="js/app.js"></script>
+            <script src="js/controller.js"></script>
+            <script src="js/filters.js"></script>
+        </body>
+    </html>

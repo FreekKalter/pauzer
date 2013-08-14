@@ -24,6 +24,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"launchpad.net/goyaml"
+    gz "github.com/daaku/go.httpgzip"
 )
 
 type Config struct {
@@ -135,7 +136,6 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 
 func timesHandler(w http.ResponseWriter, r *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
-    fmt.Println(config.Times)
 	jsonEncoder.Encode(config.Times)
 }
 
@@ -161,6 +161,13 @@ func initSabnzbFunctions() {
 		"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 		"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 	}
+}
+
+func cacheHandler(dur time.Duration, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(dur.Seconds())))
+		h.ServeHTTP(w, r)
+	})
 }
 
 func main() {
@@ -201,10 +208,13 @@ func main() {
 	r.HandleFunc("/times", timesHandler)
 
 	// static files get served directly
-	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
-	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
-	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
-	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "favicon.ico") })
+	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", gz.NewHandler(cacheHandler(time.Second*2678400, http.FileServer(http.Dir("js/"))))))
+	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", gz.NewHandler(cacheHandler(time.Second*2678400, http.FileServer(http.Dir("img/"))))))
+	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", gz.NewHandler(cacheHandler(time.Second*2678400,http.FileServer(http.Dir("css/"))))))
+	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(time.Second*2678400)))
+		http.ServeFile(w, r, "favicon.ico")
+	})
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 
 	http.Handle("/", r)
