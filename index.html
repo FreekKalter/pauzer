@@ -8,14 +8,17 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
 
+        <link href="css/main.css" rel="stylesheet" media="screen">
+
+        <!-- Load CDN resoursces -->
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+        <!-- Load local copys if loading from cdn fails -->
+        <script type="text/javascript">window.angular || document.write('<script type="text/javascript" src="js/angular.min.js"><\/script>');</script>
         <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
-        <link href="css/main-min.css" rel="stylesheet" media="screen">
 
-
-        <script src="js/angular/angular.min.js"></script>
-        <script src="js/app-min.js"></script>
+        <script src="js/app.js"></script>
         <script src="js/controller.js"></script>
-        <script src="js/filters-min.js"></script>
+        <script src="js/filters.js"></script>
 
     </head>
     <body>
