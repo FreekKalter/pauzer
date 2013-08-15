@@ -22,12 +22,9 @@ function PauzerCtrl($scope, $http){
             $scope.selectedTime = data.time;
             startCounter = data.time * 60;
             startTimer(data.secondsLeft);
+            $scope.availableTimes = data;
+            $scope.selectedTime = $scope.availableTimes[1];
         }
-    });
-    $http.get('times').success(function(data){
-        console.log(data)
-        $scope.availableTimes = data;
-        $scope.selectedTime = $scope.availableTimes[1];
     });
 
     $scope.toggleTimer = function(){

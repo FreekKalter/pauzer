@@ -24,7 +24,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"launchpad.net/goyaml"
-    gz "github.com/daaku/go.httpgzip"
 )
 
 type Config struct {
@@ -128,15 +127,10 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 		dur = int64(cDown.Duration.Minutes())
 		limit = cDown.LimitPercentage
 	}
-	state := map[string]int64{"secondsLeft": secs, "limit": limit, "time": dur}
+    state := map[string]interface{}{"secondsLeft": secs, "limit": limit, "time": dur, "times": config.Times}
 
 	jsonEncoder := json.NewEncoder(w)
 	jsonEncoder.Encode(state)
-}
-
-func timesHandler(w http.ResponseWriter, r *http.Request) {
-	jsonEncoder := json.NewEncoder(w)
-	jsonEncoder.Encode(config.Times)
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
@@ -205,12 +199,11 @@ func main() {
 	r.HandleFunc("/action/{time:[0-9]+}/{limit:[0-9]+}", formHandler)
 	r.HandleFunc("/resume", resumeHandler)
 	r.HandleFunc("/state", currentStateHandler)
-	r.HandleFunc("/times", timesHandler)
 
 	// static files get served directly
-	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", gz.NewHandler(cacheHandler(time.Second*2678400, http.FileServer(http.Dir("js/"))))))
-	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", gz.NewHandler(cacheHandler(time.Second*2678400, http.FileServer(http.Dir("img/"))))))
-	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", gz.NewHandler(cacheHandler(time.Second*2678400,http.FileServer(http.Dir("css/"))))))
+	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("js/")))))
+	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("img/")))))
+	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", cacheHandler(time.Second*2678400,http.FileServer(http.Dir("css/")))))
 	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(time.Second*2678400)))
 		http.ServeFile(w, r, "favicon.ico")
