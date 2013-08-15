@@ -24,7 +24,6 @@ function PauzerCtrl($scope, $http){
             startTimer(data.secondsLeft);
         }
         $scope.availableTimes = data.times;
-        console.log(data.times)
         $scope.selectedTime = $scope.availableTimes[1];
     });
 
