@@ -1,0 +1,6 @@
+api_key: a9311c05dbb6ab38598de47323386e86
+api_url: https://localhost:9100/sabnzbd/
+max_speed : 1000
+port: 4000
+times: [ 5 , 15 , 30, 60, 90 , 200]
+

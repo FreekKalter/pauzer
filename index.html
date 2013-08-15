@@ -6,21 +6,24 @@
         <title>Pauzer</title>
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <meta name="description" content="">
-        <meta name="viewport" content="width=device-width">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
-        <link href="css/main-min.css" rel="stylesheet" media="screen">
+        <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.no-icons.min.css" rel=stylesheet>
+        <link href="css/main.css" rel="stylesheet" media="screen">
 
+        <!-- Load CDN resoursces -->
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+        <!-- Load local copys if loading from cdn fails -->
+        <script type="text/javascript">window.angular || document.write('<script type="text/javascript" src="js/angular-min.js"><\/script>');</script>
 
-        <script src="js/angular/angular.min.js"></script>
-        <script src="js/app-min.js"></script>
-        <script src="js/controller-min.js"></script>
-        <script src="js/filters-min.js"></script>
+        <script src="js/app.js"></script>
+        <script src="js/controller.js"></script>
+        <script src="js/filters.js"></script>
 
     </head>
     <body>
         <!--[if lt IE 7]>
-            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
         <div id="wrap">
             <div class="container">
@@ -28,7 +31,7 @@
                     <h1 class="text-center">Pauzer</h1>
                 </div>
 
-                <div class="row" ng-controller="PauzerCtrl">
+                <div class="row-fluid" ng-controller="PauzerCtrl">
                     <div class="span6">
                         <form class="form-horizontal">
                             <div class="control-group">
@@ -40,22 +43,22 @@
                                     <option value="20">20&#37;</option>
                                 </select>
                             </div> <!--.control-group-->
-                                
+
                             <div class="control-group">
                                 <label class="control-label" for="time"> Tijd (in minuten): </label>
-                                <select name="time" ng-model="form.time">
-                                    <option value="1">1</option>
-                                    <option value="15" selected>15</option>
-                                    <option value="30">30</option>
-                                    <option value="60">60</option>
-                                    <option value="90">90</option>
-                                </select> 
+                                <select name="time" ng-model="selectedTime" ng-options="t for t in availableTimes">
+                                    <!--<option value="1">1</option>-->
+                                    <!--<option value="15" selected>15</option>-->
+                                    <!--<option value="30">30</option>-->
+                                    <!--<option value="60">60</option>-->
+                                    <!--<option value="90">90</option>-->
+                                </select>
                             </div><!--control-group-->
 
                             <div class="controls">
                                 <ng-switch on="form.counterRunning">
-                                    <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="false">Start timer</button>
-                                    <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="true">Stop timer</button>
+                                <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="false">Start timer</button>
+                                <button class="btn btn-primary btn-large" ng-click="toggleTimer()" ng-switch-when="true">Stop timer</button>
                                 </ng-switch>
                             </div>
                         </form>
@@ -78,5 +81,5 @@
                 <p class="text-center muted credit"><a href="http://kalteronline.org">Kalter&Co</a></p>
             </div>
         </div> <!--footer-->
-    </body>
-</html>
+        </body>
+    </html>

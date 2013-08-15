@@ -31,6 +31,7 @@ type Config struct {
 	Api_url   string
 	Max_speed int
 	Port      int
+	Times     []int
 }
 
 var slog *log.Logger
@@ -126,7 +127,7 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 		dur = int64(cDown.Duration.Minutes())
 		limit = cDown.LimitPercentage
 	}
-	state := map[string]int64{"secondsLeft": secs, "limit": limit, "time": dur}
+    state := map[string]interface{}{"secondsLeft": secs, "limit": limit, "time": dur, "times": config.Times}
 
 	jsonEncoder := json.NewEncoder(w)
 	jsonEncoder.Encode(state)
@@ -154,6 +155,13 @@ func initSabnzbFunctions() {
 		"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 		"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 	}
+}
+
+func cacheHandler(dur time.Duration, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(dur.Seconds())))
+		h.ServeHTTP(w, r)
+	})
 }
 
 func main() {
@@ -193,10 +201,13 @@ func main() {
 	r.HandleFunc("/state", currentStateHandler)
 
 	// static files get served directly
-	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir("js/"))))
-	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", http.FileServer(http.Dir("img/"))))
-	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir("css/"))))
-	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "favicon.ico") })
+	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("js/")))))
+	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("img/")))))
+	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", cacheHandler(time.Second*2678400,http.FileServer(http.Dir("css/")))))
+	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(time.Second*2678400)))
+		http.ServeFile(w, r, "favicon.ico")
+	})
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 
 	http.Handle("/", r)

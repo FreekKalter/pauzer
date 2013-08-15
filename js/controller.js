@@ -3,7 +3,6 @@ function PauzerCtrl($scope, $http){
 
     var master = {
         limit: 100,
-        time: 15,
         counterRunning: false,
     },
     intervalVar,
@@ -11,7 +10,7 @@ function PauzerCtrl($scope, $http){
 
 
     $scope.form = angular.copy(master);
-    $scope.progressBar = { 
+    $scope.progressBar = {
         width: '100%' ,
     };
 
@@ -19,10 +18,12 @@ function PauzerCtrl($scope, $http){
         if(data.limit > 0){
             $scope.form = {
                 limit: data.limit,
-                time: data.time,
             };
+            $scope.selectedTime = data.time;
             startCounter = data.time * 60;
             startTimer(data.secondsLeft);
+            $scope.availableTimes = data;
+            $scope.selectedTime = $scope.availableTimes[1];
         }
     });
 
@@ -34,8 +35,8 @@ function PauzerCtrl($scope, $http){
     };
 
     function setTimer(){
-        $http.get('action/' + $scope.form.time + '/' + $scope.form.limit).success(function(data){ 
-            startCounter=  $scope.form.time * 60;
+        $http.get('action/' + $scope.selectedTime + '/' + $scope.form.limit).success(function(data){
+            startCounter=  $scope.selectedTime * 60;
             startTimer( startCounter );
         });
     };
