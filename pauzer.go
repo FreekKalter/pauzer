@@ -41,6 +41,11 @@ type countDown struct {
 	SetAt                  time.Time
 	Duration               time.Duration
 	Limit, LimitPercentage int64
+	ReturnState            ReturnState
+}
+type ReturnState struct {
+	Speedlimit string
+	Paused     bool
 }
 
 var cDown countDown = countDown{
@@ -84,8 +89,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 func resumeHandler(w http.ResponseWriter, r *http.Request) {
 	cDown.Duration = 0
 	cDown.Limit = 0
-	callSabnzbd(sabNzbFunctions["resume_download"])
-	callSabnzbd(sabNzbFunctions["reset_limit"])
+    resumeDownload(cDown.ReturnState)
 }
 
 func formHandler(w http.ResponseWriter, r *http.Request) {
@@ -102,20 +106,52 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 	cDown.Duration = time.Minute * time.Duration(timer_value)
 	cDown.Limit = int64(config.Max_speed) - ((int64(config.Max_speed) / 100) * cDown.LimitPercentage) // percentage give is how much to block, so inverse that to get how much to let through
 	cDown.SetAt = time.Now()
+	cDown.ReturnState = getCurrentState()
 	slog.Printf("timer started: %+v\n", cDown)
 	time.AfterFunc(cDown.Duration, func() {
 		slog.Printf("timer done: %+v\n", cDown)
 		cDown.Duration = 0
 		cDown.SetAt = time.Unix(0, 0)
-		callSabnzbd(sabNzbFunctions["resume_download"])
-		callSabnzbd(sabNzbFunctions["reset_limit"])
+        resumeDownload( cDown.ReturnState)
 	})
 
 	if cDown.LimitPercentage == 100 {
-		go callSabnzbd(fmt.Sprintf(sabNzbFunctions["pause"], timer_value))
+		go callSabnzbd(fmt.Sprintf(sabNzbFunctions["pause_time"], timer_value))
 	} else {
 		go callSabnzbd(fmt.Sprintf(sabNzbFunctions["limit"], cDown.Limit))
 	}
+
+}
+
+func resumeDownload(cs ReturnState){
+    if cs.Paused {
+        go callSabnzbd( sabNzbFunctions["pause"] )
+    }else{
+        go callSabnzbd( sabNzbFunctions["resume_download"] )
+    }
+    go callSabnzbd(fmt.Sprintf( sabNzbFunctions["limit"], cs.Speedlimit))
+}
+
+func getCurrentState() ReturnState {
+	resp, err := client.Get(sabNzbFunctions["status"])
+	if err != nil {
+		slog.Panic(err)
+	}
+	defer resp.Body.Close()
+
+	text, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	type Queue struct {
+		Queue ReturnState
+	}
+	var q Queue
+	err = json.Unmarshal(text, &q)
+	if err != nil {
+		panic(err)
+	}
+	return q.Queue
 }
 
 func currentStateHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +163,7 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 		dur = int64(cDown.Duration.Minutes())
 		limit = cDown.LimitPercentage
 	}
-    state := map[string]interface{}{"secondsLeft": secs, "limit": limit, "time": dur, "times": config.Times}
+	state := map[string]interface{}{"secondsLeft": secs, "limit": limit, "time": dur, "times": config.Times}
 
 	jsonEncoder := json.NewEncoder(w)
 	jsonEncoder.Encode(state)
@@ -152,8 +188,10 @@ func initSabnzbFunctions() {
 	sabNzbFunctions = map[string]string{
 		"reset_limit":     fmt.Sprintf("%sapi?mode=config&name=speedlimit&value=0&apikey=%v", config.Api_url, config.Api_key),
 		"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", config.Api_url, config.Api_key),
-		"pause":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+		"pause_time":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+		"pause":           fmt.Sprintf("%vapi?mode=pause&apikey=%v", config.Api_url, config.Api_key),
 		"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+		"status":          fmt.Sprintf("%vapi?mode=queue&start=START&limit=LIMIT&apikey=%v&output=json", config.Api_url, config.Api_key),
 	}
 }
 
@@ -193,6 +231,7 @@ func main() {
 	}
 	initSabnzbFunctions()
 
+	getCurrentState()
 	// set up gorilla/mux handlers
 	r := mux.NewRouter()
 	r.HandleFunc("/", homeHandler)
@@ -203,7 +242,7 @@ func main() {
 	// static files get served directly
 	r.PathPrefix("/js/").Handler(http.StripPrefix("/js/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("js/")))))
 	r.PathPrefix("/img/").Handler(http.StripPrefix("/img/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("img/")))))
-	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", cacheHandler(time.Second*2678400,http.FileServer(http.Dir("css/")))))
+	r.PathPrefix("/css/").Handler(http.StripPrefix("/css/", cacheHandler(time.Second*2678400, http.FileServer(http.Dir("css/")))))
 	r.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d, public, must-revalidate, proxy-revalidate", int64(time.Second*2678400)))
 		http.ServeFile(w, r, "favicon.ico")
