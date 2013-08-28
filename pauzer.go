@@ -12,7 +12,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
-	"log/syslog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -89,7 +88,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 func resumeHandler(w http.ResponseWriter, r *http.Request) {
 	cDown.Duration = 0
 	cDown.Limit = 0
-    resumeDownload(cDown.ReturnState)
+	resumeDownload(cDown.ReturnState)
 }
 
 func formHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +111,7 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Printf("timer done: %+v\n", cDown)
 		cDown.Duration = 0
 		cDown.SetAt = time.Unix(0, 0)
-        resumeDownload( cDown.ReturnState)
+		resumeDownload(cDown.ReturnState)
 	})
 
 	if cDown.LimitPercentage == 100 {
@@ -123,13 +122,14 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func resumeDownload(cs ReturnState){
-    if cs.Paused {
-        go callSabnzbd( sabNzbFunctions["pause"] )
-    }else{
-        go callSabnzbd( sabNzbFunctions["resume_download"] )
-    }
-    go callSabnzbd(fmt.Sprintf( sabNzbFunctions["limit"], cs.Speedlimit))
+func resumeDownload(cs ReturnState) {
+	slog.Println("Resuming downloads")
+	if cs.Paused {
+		go callSabnzbd(sabNzbFunctions["pause"])
+	} else {
+		go callSabnzbd(sabNzbFunctions["resume_download"])
+	}
+	go callSabnzbd(fmt.Sprintf(sabNzbFunctions["limit"], cs.Speedlimit))
 }
 
 func getCurrentState() ReturnState {
@@ -151,6 +151,7 @@ func getCurrentState() ReturnState {
 	if err != nil {
 		panic(err)
 	}
+	slog.Printf("%+v", q.Queue)
 	return q.Queue
 }
 
@@ -188,7 +189,7 @@ func initSabnzbFunctions() {
 	sabNzbFunctions = map[string]string{
 		"reset_limit":     fmt.Sprintf("%sapi?mode=config&name=speedlimit&value=0&apikey=%v", config.Api_url, config.Api_key),
 		"resume_download": fmt.Sprintf("%vapi?mode=resume&apikey=%v", config.Api_url, config.Api_key),
-		"pause_time":           fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
+		"pause_time":      fmt.Sprintf("%vapi?mode=config&name=set_pause&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 		"pause":           fmt.Sprintf("%vapi?mode=pause&apikey=%v", config.Api_url, config.Api_key),
 		"limit":           fmt.Sprintf("%vapi?mode=config&name=speedlimit&value=%%v&apikey=%v", config.Api_url, config.Api_key),
 		"status":          fmt.Sprintf("%vapi?mode=queue&start=START&limit=LIMIT&apikey=%v&output=json", config.Api_url, config.Api_key),
@@ -205,11 +206,10 @@ func cacheHandler(dur time.Duration, h http.Handler) http.Handler {
 func main() {
 	// Set up logging
 	var err error
-	slog, err = syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_USER, 0)
+	slog = log.New(os.Stdout, "pauzer: ", log.LstdFlags)
 	if err != nil {
 		slog.Panic(err)
 	}
-	slog.SetPrefix("pauzer: ")
 
 	// Set up gracefull termination
 	killChannel := make(chan os.Signal, 1)
@@ -231,7 +231,6 @@ func main() {
 	}
 	initSabnzbFunctions()
 
-	getCurrentState()
 	// set up gorilla/mux handlers
 	r := mux.NewRouter()
 	r.HandleFunc("/", homeHandler)
