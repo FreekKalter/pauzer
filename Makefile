@@ -27,6 +27,11 @@ pauzer: pauzer.go
 	-pkill pauzer
 	./pauzer &
 
+packed: pauzer
+	cp pauzer pauzer.packed
+	strip --strip-unneeded pauzer.packed
+	upx -5 ./pauzer.packed
+
 # target: minify - Minifies CSS and JS.
 minify: minify-css minify-js
 

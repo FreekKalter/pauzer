@@ -1,6 +1,7 @@
 .*.sw[a-z]
 img/*
 pauzer
+pauzer.packed
 js/*-min.js
 css/*-min.css
 config.yml
