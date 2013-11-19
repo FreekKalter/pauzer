@@ -171,10 +171,12 @@ func currentStateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(404)
 	err := compiledTemplates.ExecuteTemplate(w, "404.html", r.URL)
 	if err != nil {
 		slog.Panic(err)
 	}
+
 }
 
 func callSabnzbd(url string) {
